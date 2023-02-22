@@ -3,7 +3,7 @@ local module, L = BigWigs:ModuleDeclaration("Loatheb", "Naxxramas")
 
 module.revision = 20048
 module.enabletrigger = module.translatedName
-module.toggleoptions = {"doom", "curse", "spore", "debuff", -1, "consumable", "graphic", "sound", "bosskill"}
+module.toggleoptions = {"doom", "curse", "spore", "debuff", "sporecount", -1, "consumable", "graphic", "sound", "bosskill"}
 
 L:RegisterTranslations("enUS", function() return {
 	cmd = "Loatheb",
@@ -23,6 +23,10 @@ L:RegisterTranslations("enUS", function() return {
 	debuff_cmd = "debuff",
 	debuff_name = "Spore Debuff",
 	debuff_desc = "Show icon when your spore debuff is running out",
+    
+    sporecount_cmd = "sporecount",
+	sporecount_name = "Spore Count",
+	sporecount_desc = "Add a group counter for spores(1-7)",
 
 	doombar = "Inevitable Doom %d",
 	doomwarn = "Inevitable Doom %d! %d sec to next!",
@@ -102,7 +106,9 @@ local syncName = {
 }
 
 local consumableslist = {L["shadowpot"],L["noconsumable"],L["bandage"],L["wrtorhs"],L["shadowpotandbandage"],L["noconsumable"],L["bandage"],L["noconsumable"],L["wrtorhs"]}
-local numSpore = 0
+local numSpore = 0 -- how many spores have been spawned
+local currentSporeGroup = 0 -- current group getting spore
+local numSporeGroups = 7 -- number of groups in spore rotation.  Hardcoded at 7 
 local numDoom = 0
 local timeCurseWarning = 0
 local _, playerClass = UnitClass("player")
@@ -152,6 +158,7 @@ function module:OnSetup()
 	timeCurseWarning = 0
 	self.consumableseq = 0
 	numSpore = 0
+    currentSporeGroup = 0
 	numDoom = 0
 	timer.doom = timer.firstDoom
 
@@ -246,8 +253,17 @@ end
 
 function module:Spore()
 	numSpore = numSpore + 1
+    currentSporeGroup = currentSporeGroup + 1
+	if currentSporeGroup > numSporeGroups then --wrap around to group 1
+		currentSporeGroup = 1
+	end
+    
 	if self.db.profile.spore then
-		self:Bar(string.format(L["sporebar"], numSpore), timer.spore, icon.spore, true, "blue")
+        local barStr = string.format(L["sporebar"], numSpore)
+        if self.db.profile.sporecount then
+			barStr = barStr .. " - " .. currentSporeGroup
+		end
+		self:Bar(barStr, timer.spore, icon.spore, true, "blue")
 	end
 end
 

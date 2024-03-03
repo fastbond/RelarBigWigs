@@ -7,6 +7,8 @@ assert( BigWigs, "BigWigs not found!")
 
 local L = AceLibrary("AceLocale-2.2"):new("BigWigsFrostBlast")
 
+local HealComm = HealComm
+
 local anchor = nil
 local FrostblastTargets = {}
 
@@ -167,6 +169,7 @@ end
 
 function BigWigsFrostBlast:OnEnable()
 	self:RegisterEvent("Ace2_AddonDisabled")
+    BigWigsFrostBlast:LoadHealComm()
 end
 
 function BigWigsFrostBlast:OnDisable()
@@ -197,6 +200,11 @@ end
 -----------------------------------------------------------------------
 --      Util
 -----------------------------------------------------------------------
+function BigWigsFrostBlast:LoadHealComm()
+    if HealComm == nil and AceLibrary:HasInstance("HealComm-1.0") then
+        HealComm = AceLibrary("HealComm-1.0")
+    end
+end
 
 function BigWigsFrostBlast:FBClose()
 	if anchor then anchor:Hide() end
@@ -300,12 +308,31 @@ function BigWigsFrostBlast:OnUpdate()
 			this:GetParent().textVal:SetText(L["Offline"])
 		elseif UnitIsDeadOrGhost(unit) then
 			this:SetValue(0)
+            this:GetParent().healbar:SetValue(0)
+            this:GetParent().healbar.healText:SetText("")
 			this:GetParent().textVal:SetText(L["Dead"])
 		else
 			local percent = UnitHealth(unit) / UnitHealthMax(unit) * 100
 			percent = math.floor(percent + 0.5)
 			this:SetValue(percent)
 			this:GetParent().textVal:SetText(percent)
+            
+            if HealComm ~= nil then
+                healbar = this:GetParent().healbar
+                healbar:ClearAllPoints()
+                healbar:SetPoint("LEFT", this, "LEFT", percent / 100 * this:GetWidth(), 0)
+                healbar:SetWidth(this:GetParent():GetWidth())
+                percent = HealComm:getHeal(UnitName(unit)) / UnitHealthMax(unit) * 100
+                percent = math.floor(percent + 0.5)
+                healbar:SetValue(percent)
+                if percent > 0 then
+                    --healbar.healText:SetText(percent)
+                    healbar.healText:ClearAllPoints()
+                    healbar.healText:SetPoint("LEFT", healbar, "LEFT", percent / 200 * healbar:GetWidth(), 0)
+                else
+                    healbar.healText:SetText("")
+                end
+            end
 		end
 		if BigWigsFrostBlast.db.profile.names then
 			this:GetParent().text:SetText(tostring(coloredNames[unit]))
@@ -316,7 +343,7 @@ function BigWigsFrostBlast:OnUpdate()
 		if BigWigsFrostBlast.db.profile.bars then
 			this:SetStatusBarColor(RAID_CLASS_COLORS[class].r,RAID_CLASS_COLORS[class].g,RAID_CLASS_COLORS[class].b)
 		else
-			this:SetStatusBarColor(0,1,0)
+			this:SetStatusBarColor(1,0,0)
 		end
 	end
 end
@@ -396,7 +423,7 @@ function BigWigsFrostBlast:SetupFrames()
 		bar.status:SetValue(100)
 		bar.status:SetWidth(196)
 		bar.status:SetHeight(20)
-		bar.status:SetStatusBarColor(0,1,0)
+		bar.status:SetStatusBarColor(1,0,0)
 		bar.status:SetScript("OnUpdate", nil)
 		bar.text = bar.status:CreateFontString(nil, "OVERLAY")
 		bar.text:ClearAllPoints()
@@ -430,8 +457,28 @@ function BigWigsFrostBlast:SetupFrames()
 		bar.bg:SetFrameLevel(bar.bg:GetFrameLevel() - 1)
 		bar.bg:SetBackdropBorderColor(0.9, 0.9, 0.9, 0.6)
 		bar.bg:SetBackdropColor(0.3, 0.3, 0.3, 0.6)
-
-
+        
+        
+		bar.healbar = CreateFrame("StatusBar",nil, bar)
+		bar.healbar:ClearAllPoints()
+		bar.healbar:SetPoint("RIGHT", bar)
+		bar.healbar:SetStatusBarTexture("Interface\\AddOns\\BigWigs\\textures\\smooth")
+		bar.healbar:SetMinMaxValues(0, 100)
+		bar.healbar:SetValue(0)
+		bar.healbar:SetWidth(bar.status:GetWidth())
+		bar.healbar:SetHeight(bar.status:GetHeight())
+		bar.healbar:SetStatusBarColor(0,1,0, 0.35)
+		bar.healbar:SetScript("OnUpdate", nil)
+		bar.healbar.healText = bar.healbar:CreateFontString(nil, "OVERLAY")
+		bar.healbar.healText:ClearAllPoints()
+		bar.healbar.healText:SetPoint("CENTER", bar.healbar, "CENTER", 0,0)
+		bar.healbar.healText:SetShadowOffset(1, -1)
+		bar.healbar.healText:SetShadowColor(0, 0, 0)
+		bar.healbar.healText:SetTextColor(1, 1, 1, 0.9)
+		bar.healbar.healText:SetJustifyH("RIGHT")
+		bar.healbar.healText:SetFont(L["font"], 10)
+		bar.healbar.healText:SetText("")
+        
 		frame.bar[i] = bar
 		frame.bar[i]:Hide()
 	end
